@@ -1,0 +1,242 @@
+File 2: jp.co.sss.shop.repository.WishlistRepository
+
+Java
+package jp.co.sss.shop.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import jp.co.sss.shop.entity.Wishlist;
+import java.util.List;
+
+/**
+ * お気に入り情報 リポジトリインターフェース
+ */
+public interface WishlistRepository extends JpaRepository<Wishlist, Integer> {
+    // Lấy danh sách theo User, sắp xếp mới nhất lên đầu
+    List<Wishlist> findByUserIdOrderByInsertDateDesc(Integer userId);
+    // Kiểm tra xem đã tồn tại chưa
+    Wishlist findByUserIdAndItemId(Integer userId, Integer itemId);
+}
+File 3: jp.co.sss.shop.entity.Review
+
+Java
+package jp.co.sss.shop.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.sql.Date;
+
+/**
+ * レビュー情報 エンティティクラス
+ */
+@Entity
+@Table(name = "reviews")
+public class Review {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(name = "user_id")
+    private Integer userId;
+
+    @Column(name = "item_id")
+    private Integer itemId;
+
+    @Column(name = "rating")
+    private Integer rating;
+
+    @Column(name = "COMMENT") // Từ khóa của Oracle
+    private String comment;
+
+    @Column(name = "insert_date")
+    private Date insertDate;
+
+    @Column(name = "delete_flag")
+    private Integer deleteFlag;
+
+    // TODO: Dùng Eclipse tạo Getters và Setters ở đây
+}
+File 4: jp.co.sss.shop.repository.ReviewRepository
+
+Java
+package jp.co.sss.shop.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import jp.co.sss.shop.entity.Review;
+import java.util.List;
+
+/**
+ * レビュー情報 リポジトリインターフェース
+ */
+public interface ReviewRepository extends JpaRepository<Review, Integer> {
+    // Lấy danh sách đánh giá của 1 sản phẩm (chưa bị xóa)
+    List<Review> findByItemIdAndDeleteFlagOrderByInsertDateDesc(Integer itemId, Integer deleteFlag);
+}
+2. Tầng Controller (Bám sát phong cách Code mẫu)
+File 5: jp.co.sss.shop.controller.client.wishlist.ClientWishlistController
+
+Java
+package jp.co.sss.shop.controller.client.wishlist;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import jakarta.servlet.http.HttpSession;
+
+import jp.co.sss.shop.repository.WishlistRepository;
+import jp.co.sss.shop.entity.Wishlist;
+import jp.co.sss.shop.bean.UserBean; // Giả định class lưu Session User của dự án
+
+import java.sql.Date;
+
+/**
+ * お気に入り管理機能のコントローラクラス
+ */
+@Controller
+public class ClientWishlistController {
+
+    @Autowired
+    WishlistRepository wishlistRepository;
+
+    @Autowired
+    HttpSession session;
+
+    /**
+     * お気に入り一覧表示
+     */
+    @RequestMapping(path = "/client/wishlist/list", method = RequestMethod.GET)
+    public String list(Model model) {
+        // Lấy thông tin user từ Session (Tên class UserBean có thể thay đổi tùy dự án em)
+        UserBean user = (UserBean) session.getAttribute("user");
+        if (user == null) {
+            return "redirect:/login";
+        }
+
+        model.addAttribute("wishlistItems", wishlistRepository.findByUserIdOrderByInsertDateDesc(user.getId()));
+        return "client/wishlist/list";
+    }
+
+    /**
+     * お気に入り追加処理
+     */
+    @RequestMapping(path = "/client/wishlist/add", method = RequestMethod.POST)
+    public String add(Integer itemId) {
+        UserBean user = (UserBean) session.getAttribute("user");
+        if (user == null) {
+            return "redirect:/login";
+        }
+
+        // Kiểm tra tránh trùng lặp
+        Wishlist existWishlist = wishlistRepository.findByUserIdAndItemId(user.getId(), itemId);
+        if (existWishlist == null) {
+            Wishlist wishlist = new Wishlist();
+            wishlist.setUserId(user.getId());
+            wishlist.setItemId(itemId);
+            wishlist.setInsertDate(new Date(System.currentTimeMillis()));
+            wishlistRepository.save(wishlist);
+        }
+
+        return "redirect:/client/wishlist/list";
+    }
+
+    /**
+     * お気に入り削除処理
+     */
+    @RequestMapping(path = "/client/wishlist/delete/{id}", method = RequestMethod.POST)
+    public String delete(@PathVariable Integer id) {
+        UserBean user = (UserBean) session.getAttribute("user");
+        if (user != null) {
+            wishlistRepository.deleteById(id);
+        }
+        return "redirect:/client/wishlist/list";
+    }
+}
+File 6: jp.co.sss.shop.controller.client.review.ClientReviewRegistController
+Đây là Controller đã được anh "làm mỏng" đi rất nhiều nhờ áp dụng Cách 1 (Popup xác nhận bằng JS thay vì tạo màn hình mới).
+
+Java
+package jp.co.sss.shop.controller.client.review;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import jakarta.servlet.http.HttpSession;
+
+import jp.co.sss.shop.repository.ReviewRepository;
+import jp.co.sss.shop.entity.Review;
+import jp.co.sss.shop.bean.UserBean;
+
+import java.sql.Date;
+
+/**
+ * レビュー投稿機能のコントローラクラス
+ */
+@Controller
+public class ClientReviewRegistController {
+
+    @Autowired
+    ReviewRepository reviewRepository;
+
+    @Autowired
+    HttpSession session;
+
+    /**
+     * レビュー投稿画面表示
+     */
+    @RequestMapping(path = "/client/review/regist/input/{itemId}", method = RequestMethod.GET)
+    public String input(@PathVariable Integer itemId, Model model) {
+        UserBean user = (UserBean) session.getAttribute("user");
+        if (user == null) {
+            return "redirect:/login";
+        }
+        
+        // Truyền Item ID sang giao diện HTML để khi Submit biết đang đánh giá sản phẩm nào
+        model.addAttribute("itemId", itemId);
+        return "client/review/regist_input";
+    }
+
+    /**
+     * レビュー登録処理 (Bỏ qua Check, đăng thẳng vào DB)
+     */
+    @RequestMapping(path = "/client/review/regist/complete", method = RequestMethod.POST)
+    public String complete(Integer itemId, Integer rating, String comment, Model model) {
+        UserBean user = (UserBean) session.getAttribute("user");
+        if (user == null) {
+            return "redirect:/login";
+        }
+
+        // Validation cơ bản phía Server
+        if (rating == null) {
+            model.addAttribute("itemId", itemId);
+            model.addAttribute("errorMessage", "評価（星）を選択してください。");
+            return "client/review/regist_input";
+        }
+
+        Review review = new Review();
+        review.setUserId(user.getId());
+        review.setItemId(itemId);
+        review.setRating(rating);
+        review.setComment(comment);
+        review.setDeleteFlag(0);
+        review.setInsertDate(new Date(System.currentTimeMillis()));
+        
+        reviewRepository.save(review);
+
+        // Đăng xong, redirect về trang chi tiết của chính sản phẩm đó để khách xem review vừa viết
+        return "redirect:/client/item/detail/" + itemId;
+    }
+}
+Lời khuyên cuối cùng:
+Trong Controller, anh đang giả định Class lưu trữ thông tin đăng nhập của dự án em là UserBean. Em hãy kiểm tra lại code gốc xem họ đang ép kiểu (cast) Session ra class nào (ví dụ: MemberBean, User, v.v.) và import đúng đường dẫn package nhé.
+
+Để hiển thị danh sách Review lên màn hình item_detail.html, em chỉ cần mở ClientItemShowController.java, tìm hàm hiển thị detail và chèn thêm dòng này trước khi return:
+model.addAttribute("reviews", reviewRepository.findByItemIdAndDeleteFlagOrderByInsertDateDesc(id, 0));
