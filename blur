@@ -1,0 +1,104 @@
+Bước 1: Thêm CSS tạo Popup (Vào cuối file stylesheet.css)
+Cơ chế ở đây là: Tạo một khối Popup bị ẩn đi (opacity: 0; visibility: hidden;), đặt vị trí tuyệt đối (position: absolute;) đè lên trên ảnh. Khi rê chuột vào ảnh (:hover), ta làm khối đó hiện lên.
+
+Copy đoạn CSS sau dán xuống dưới cùng file stylesheet.css:
+
+CSS
+/* =========================================
+   4. HIỆU ỨNG POPUP THÔNG TIN KHI HOVER ẢNH
+   ========================================= */
+/* Container bọc ngoài ảnh để làm mốc tọa độ */
+.item-hover-wrapper {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+
+/* Khối Popup thông tin ẩn ban đầu */
+.quick-info-popup {
+    position: absolute;
+    bottom: 105%; /* Nổi lên phía trên tấm ảnh */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px; /* Độ rộng của popup */
+    background-color: rgba(18, 82, 109, 0.95); /* Màu xanh theme của dự án */
+    color: #fff;
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    
+    /* Trạng thái ẩn */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease, bottom 0.3s ease;
+    z-index: 100;
+    pointer-events: none; /* Không cản trở việc click vào ảnh */
+    text-align: left;
+    font-size: 0.9em;
+}
+
+/* Mũi tên nhỏ chỉ xuống dưới của Popup */
+.quick-info-popup::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -6px;
+    border-width: 6px;
+    border-style: solid;
+    border-color: rgba(18, 82, 109, 0.95) transparent transparent transparent;
+}
+
+/* Các dòng text trong Popup */
+.quick-info-popup p {
+    margin: 5px 0;
+    line-height: 1.4;
+}
+
+.quick-info-popup .popup-price {
+    color: #deff9a; /* Màu xanh neon nổi bật */
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+/* Hiệu ứng khi rê chuột vào container bọc ảnh */
+.item-hover-wrapper:hover .quick-info-popup {
+    opacity: 1;
+    visibility: visible;
+    bottom: 115%; /* Nổi cao lên một chút tạo hiệu ứng mượt */
+}
+Bước 2: Cập nhật HTML cấu trúc ảnh (Trong 2-1-2-1-item_list.html)
+Mở file danh sách sản phẩm, tìm đến cột <td> chứa ảnh. Ta sẽ bọc thẻ <img> vào trong thẻ <div class="item-hover-wrapper">, đồng thời chèn thêm khối Popup vào trong đó.
+
+Sửa từ code cũ:
+
+HTML
+<td class="image">
+    <img src="./images/apple.jpg">
+</td>
+Thành code mới (Cho team Frontend):
+
+HTML
+<td class="image">
+    <div class="item-hover-wrapper">
+        <a href="http://localhost:55000/shared_shop/client/item/detail/1">
+            <img src="./images/apple.jpg" alt="商品画像" width="100">
+        </a>
+        
+        <div class="quick-info-popup">
+            <p style="font-weight: bold; border-bottom: 1px solid #555; padding-bottom: 5px;">りんご</p>
+            <p class="popup-price">価格: 100円</p>
+            <p>カテゴリ: 食料品</p>
+            <p style="color: #f1c40f; font-weight: bold;">★★★★☆ (4.0)</p>
+        </div>
+    </div>
+</td>
+💡 Lưu ý khi tích hợp với Backend (Thymeleaf)
+Khi các bạn code Java ráp Thymeleaf vào file này, em dặn các bạn dùng vòng lặp th:each để lấy dữ liệu động đắp vào khối Popup luôn nhé. Ví dụ:
+
+HTML
+<div class="quick-info-popup">
+    <p style="font-weight: bold; border-bottom: 1px solid #555; padding-bottom: 5px;" th:text="${item.name}">商品名</p>
+    <p class="popup-price" th:text="'価格: ' + ${item.price} + '円'">価格: 100円</p>
+    <p th:text="'カテゴリ: ' + ${item.category.name}">カテゴリ: 食料品</p>
+</div>
