@@ -1,0 +1,45 @@
+<article class="main">
+    <h2 class="title">レビューを投稿する</h2>
+
+    <div class="user_container">
+        <form th:action="@{/client/review/regist/complete}" method="post" class="login_form" style="width: 100%;">
+            <input type="hidden" name="itemId" th:value="${itemId}">
+            
+            <ul class="error_list" style="color: #C00; list-style: none;" th:if="${errorMessage != null}">
+                <li th:text="${errorMessage}"></li>
+            </ul>
+
+            <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                <div class="label" style="width: 35%; padding: 8px 0; text-align: right; padding-right: 15px;">評価 (星) <span style="color: red;">*</span>:</div>
+                
+                <div class="rate-form">
+                    <input type="radio" id="star5" name="rating" value="5" />
+                    <label for="star5" title="5">★</label>
+                    <input type="radio" id="star4" name="rating" value="4" />
+                    <label for="star4" title="4">★</label>
+                    <input type="radio" id="star3" name="rating" value="3" />
+                    <label for="star3" title="3">★</label>
+                    <input type="radio" id="star2" name="rating" value="2" />
+                    <label for="star2" title="2">★</label>
+                    <input type="radio" id="star1" name="rating" value="1" />
+                    <label for="star1" title="1">★</label>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: flex-start; margin-bottom: 15px;">
+                <div class="label" style="width: 35%; padding: 8px 0; text-align: right; padding-right: 15px;">コメント:</div>
+                <div class="input" style="width: 55%;">
+                    <textarea name="comment" rows="5" style="width: 100%; border-radius: 4px; padding: 5px;" placeholder="商品の感想を教えてください..."></textarea>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <input type="submit" value="レビューを投稿する" onclick="return confirm('入力した内容でレビューを投稿します。よろしいですか？');" style="padding: 5px 20px;">
+            </div>
+        </form>
+    </div>
+    
+    <div style="text-align: center; margin-top: 20px;">
+        <a th:href="@{/client/order/list}">注文履歴へ戻る</a>
+    </div>
+</article>
