@@ -1,0 +1,79 @@
+package jp.co.sss.shop.controller.client.item;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+
+import jp.co.sss.shop.repository.ItemRepository;
+import jp.co.sss.shop.repository.ReviewRepository; // Thêm import Review
+import jp.co.sss.shop.entity.Item; // Thêm import Item Entity
+import jp.co.sss.shop.service.BeanTools;
+
+/**
+ * 商品管理 一覧表示機能・詳細表示機能(一般会員・非会員用)のコントローラクラス
+ *
+ * @author SystemShared
+ */
+@Controller
+public class ClientItemShowController {
+
+    /**
+     * 商品情報
+     */
+    @Autowired
+    ItemRepository itemRepository;
+
+    /**
+     * レビュー情報 (Tính năng bổ sung)
+     */
+    @Autowired
+    ReviewRepository reviewRepository;
+
+    /**
+     * Entity、Form、Bean間のデータコピーサービス
+     */
+    @Autowired
+    BeanTools beanTools;
+    
+    /**
+     * トップ画面 表示処理
+     *
+     * @param model Viewとの値受渡し
+     * @return "index" トップ画面
+     */
+    @RequestMapping(path = "/" , method = { RequestMethod.GET, RequestMethod.POST })
+    public String index(Model model) {
+        return "index";
+    }
+
+    /**
+     * 商品詳細画面 表示処理
+     * * @param id 商品ID
+     * @param model Viewとの値受渡し
+     * @return "client/item/item_detail" 詳細画面
+     */
+    @RequestMapping(path = "/client/item/detail/{id}", method = RequestMethod.GET)
+    public String detail(@PathVariable Integer id, Model model) {
+        
+        // 1. Lấy thông tin chi tiết của sản phẩm từ Database
+        Item item = itemRepository.findById(id).orElse(null);
+        
+        // Nếu không tìm thấy sản phẩm (có thể do nhập ID ảo trên URL), đẩy về trang chủ hoặc danh sách
+        if (item == null) {
+            return "redirect:/";
+        }
+        
+        // Truyền đối tượng item ra giao diện Thymeleaf
+        model.addAttribute("item", item);
+
+        // 2. THÊM MỚI: Lấy danh sách review của sản phẩm này
+        // deleteFlag = 0 nghĩa là chỉ lấy những review đang hiển thị, chưa bị xóa
+        model.addAttribute("reviews", reviewRepository.findByItemIdAndDeleteFlagOrderByInsertDateDesc(id, 0));
+        
+        // Trả về file HTML hiển thị chi tiết sản phẩm (Tên thư mục và file có thể khác tùy cấu trúc team em)
+        return "client/item/item_detail";
+    }
+}
