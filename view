@@ -1,0 +1,25 @@
+<div class="review_area" style="margin-top: 40px; border-top: 2px solid #12526d; padding-top: 20px;">
+    <h3 style="font-size: 1.2em; font-weight: bold; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">
+        カスタマーレビュー
+    </h3>
+    
+    <div th:if="${#lists.isEmpty(reviews)}" style="margin-top: 15px; color: #666;">
+        まだレビューはありません。
+    </div>
+
+    <div th:unless="${#lists.isEmpty(reviews)}">
+        <div th:each="review : ${reviews}" class="review_item" style="padding: 15px 0; border-bottom: 1px dashed #eee;">
+            
+            <div class="review_stars" style="font-size: 1.2em; letter-spacing: 2px; margin-bottom: 5px;">
+                <span style="color: #f39c12;" th:text="${#strings.repeat('★', review.rating)}"></span>
+                <span style="color: #ccc;" th:text="${#strings.repeat('★', 5 - review.rating)}"></span>
+            </div>
+            
+            <div style="font-size: 0.9em; color: #666; margin: 5px 0;">
+                投稿日: <span th:text="${#dates.format(review.insertDate, 'yyyy/MM/dd')}"></span>
+            </div>
+            
+            <p style="margin: 0; line-height: 1.4;" th:text="${review.comment}"></p>
+        </div>
+    </div>
+</div>
