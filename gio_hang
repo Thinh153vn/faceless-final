@@ -10,8 +10,8 @@ import jakarta.servlet.http.HttpSession;
 import java.util.List;
 import java.util.ArrayList;
 
-// Chú ý import các Entity và Repository cần thiết của team em
-import jp.co.sss.shop.bean.BasketBean; 
+import jp.co.sss.shop.bean.BasketBean;
+import jp.co.sss.shop.entity.Item;
 import jp.co.sss.shop.repository.ItemRepository;
 
 @Controller
@@ -24,62 +24,79 @@ public class ClientBasketController {
     ItemRepository itemRepository;
 
     /**
-     * 買い物かごメニュー 押下
-     * Hiển thị danh sách giỏ hàng [cite: 672, 674]
+     * カゴ一覧表示 (Hiển thị Giỏ hàng)
      */
     @RequestMapping(path = "/client/basket/list", method = RequestMethod.GET)
     public String list(Model model) {
-        // Lấy giỏ hàng từ session
+        @SuppressWarnings("unchecked")
         List<BasketBean> basketList = (List<BasketBean>) session.getAttribute("basketList");
         
         if (basketList == null) {
             basketList = new ArrayList<>();
         }
         
-        // TODO: Viết logic kiểm tra tồn kho và tạo câu thông báo ở đây [cite: 676]
-
         model.addAttribute("basketList", basketList);
-        return "client/basket/list"; // Trả về template [cite: 678]
+        return "client/basket/list"; 
     }
 
     /**
-     * 買い物かごへ追加ボタン押下
-     * Thêm vào giỏ hàng [cite: 649, 650]
+     * カゴへ追加 (Thêm vào Giỏ hàng)
      */
     @RequestMapping(path = "/client/basket/add", method = RequestMethod.POST)
-    public String add(Integer id) {
+    public String add(Integer itemId) {
+        @SuppressWarnings("unchecked")
         List<BasketBean> basketList = (List<BasketBean>) session.getAttribute("basketList");
-        
-        // Nếu chưa có giỏ hàng thì tạo mới [cite: 653]
         if (basketList == null) {
             basketList = new ArrayList<>();
         }
 
-        // TODO: Viết logic kiểm tra xem sản phẩm đã có trong basketList chưa[cite: 654]. 
-        // Có rồi -> Tăng số lượng. Chưa có -> Thêm mới[cite: 655].
+        // Lấy thông tin Item từ DB để gán vào BasketBean
+        Item item = itemRepository.findById(itemId).orElse(null);
+        if (item == null) {
+            return "redirect:/client/item/list/1";
+        }
 
+        // Kiểm tra xem sản phẩm đã có trong giỏ chưa
+        boolean isExist = false;
+        for (BasketBean basket : basketList) {
+            if (basket.getId().equals(itemId)) {
+                // Đã có -> Tăng số lượng lên 1
+                basket.setOrderNum(basket.getOrderNum() + 1);
+                isExist = true;
+                break;
+            }
+        }
+
+        // Nếu chưa có -> Thêm mới vào List
+        if (!isExist) {
+            BasketBean newBasket = new BasketBean();
+            newBasket.setId(item.getId());
+            newBasket.setName(item.getName());
+            newBasket.setStock(item.getStock());
+            newBasket.setOrderNum(1); // Mặc định số lượng là 1
+            basketList.add(newBasket);
+        }
+
+        // Cập nhật lại Session
         session.setAttribute("basketList", basketList);
         
-        return "redirect:/client/basket/list"; // PRG: Redirect [cite: 656]
+        return "redirect:/client/basket/list"; 
     }
 
     /**
-     * 削除ボタン 押下
-     * Xóa 1 sản phẩm khỏi giỏ hàng [cite: 660, 661]
+     * カゴから削除 (Xóa 1 sản phẩm khỏi Giỏ hàng)
      */
     @RequestMapping(path = "/client/basket/delete", method = RequestMethod.POST)
-    public String delete(Integer id) {
-        // TODO: Lấy basketList từ session, tìm sản phẩm theo ID và xóa [cite: 662]
-        return "redirect:/client/basket/list"; // PRG: Redirect [cite: 663]
-    }
-
-    /**
-     * 買い物かごを空にするボタン 押下
-     * Xóa toàn bộ giỏ hàng [cite: 665, 668]
-     */
-    @RequestMapping(path = "/basket/allDelete", method = RequestMethod.POST)
-    public String allDelete() {
-        session.removeAttribute("basketList"); // Xóa giỏ hàng khỏi session [cite: 670]
-        return "redirect:/client/basket/list"; // PRG: Redirect [cite: 671]
+    public String delete(Integer itemId) {
+        @SuppressWarnings("unchecked")
+        List<BasketBean> basketList = (List<BasketBean>) session.getAttribute("basketList");
+        
+        if (basketList != null) {
+            // Dùng removeIf để xóa phần tử có ID tương ứng (Java 8+)
+            basketList.removeIf(basket -> basket.getId().equals(itemId));
+            session.setAttribute("basketList", basketList);
+        }
+        
+        return "redirect:/client/basket/list";
     }
 }
