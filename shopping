@@ -1,0 +1,89 @@
+package jp.co.sss.shop.controller.client.order;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import jakarta.servlet.http.HttpSession;
+
+@Controller
+public class ClientOrderRegistController {
+
+    @Autowired
+    HttpSession session;
+
+    // ----- BƯỚC 1: NHẬP ĐỊA CHỈ -----
+    
+    // Xử lý POST từ nút "Tiến hành đặt hàng" ở Giỏ hàng [cite: 689, 690]
+    @RequestMapping(path = "/client/order/address/input", method = RequestMethod.POST)
+    public String addressInputPost() {
+        // TODO: Khởi tạo Form đặt hàng, lấy thông tin User từ DB gán vào Form, lưu Form vào Session [cite: 749]
+        return "redirect:/client/order/address/input"; [cite: 692, 749]
+    }
+
+    // Hiển thị màn hình nhập địa chỉ [cite: 694]
+    @RequestMapping(path = "/client/order/address/input", method = RequestMethod.GET)
+    public String addressInputGet(Model model) {
+        return "client/order/address_input"; [cite: 713, 749]
+    }
+
+
+    // ----- BƯỚC 2: CHỌN PHƯƠNG THỨC THANH TOÁN -----
+
+    // Xử lý POST từ nút "Tiếp theo" ở màn hình Địa chỉ [cite: 714, 715]
+    @RequestMapping(path = "/client/order/payment/input", method = RequestMethod.POST)
+    public String paymentInputPost() {
+        // TODO: Validate địa chỉ. Nếu lỗi -> redirect về address/input. Nếu OK -> redirect sang payment/input [cite: 717, 718, 719, 749]
+        return "redirect:/client/order/payment/input"; [cite: 719]
+    }
+
+    // Hiển thị màn hình thanh toán [cite: 720]
+    @RequestMapping(path = "/client/order/payment/input", method = RequestMethod.GET)
+    public String paymentInputGet(Model model) {
+        return "client/order/payment_input"; [cite: 722, 753]
+    }
+
+
+    // ----- BƯỚC 3: XÁC NHẬN ĐƠN HÀNG -----
+
+    // Xử lý POST từ nút "Tiếp theo" ở màn hình Thanh toán [cite: 723, 724]
+    @RequestMapping(path = "/client/order/check", method = RequestMethod.POST)
+    public String checkPost() {
+        // TODO: Cập nhật phương thức thanh toán vào Form trong Session [cite: 753]
+        return "redirect:/client/order/check"; [cite: 726, 753]
+    }
+
+    // Hiển thị màn hình Xác nhận (LƯU Ý: Rất quan trọng) [cite: 727]
+    @RequestMapping(path = "/client/order/check", method = RequestMethod.GET)
+    public String checkGet(Model model) {
+        // TODO: TẠI ĐÂY BẮT BUỘC PHẢI CHECK TỒN KHO. [cite: 728, 753]
+        // Lấy giỏ hàng từ Session -> Query DB xem còn hàng không -> Tính tổng tiền -> Truyền ra Model[cite: 753].
+        return "client/order/check"; [cite: 729, 753]
+    }
+
+    // Nút "Quay lại" từ màn hình Xác nhận về màn hình Địa chỉ [cite: 705, 707]
+    @RequestMapping(path = "/client/order/payment/back", method = RequestMethod.POST)
+    public String paymentBackPost() {
+        return "redirect:/client/order/address/input"; [cite: 711, 753]
+    }
+
+
+    // ----- BƯỚC 4: HOÀN TẤT ĐẶT HÀNG -----
+
+    // Xử lý POST từ nút "Chốt đơn" [cite: 733]
+    @RequestMapping(path = "/client/order/complete", method = RequestMethod.POST)
+    public String completePost() {
+        // TODO: Check tồn kho lần cuối trước khi INSERT. [cite: 762]
+        // INSERT vào bảng orders và order_items. [cite: 762]
+        // Trừ tồn kho trong bảng items. [cite: 862]
+        // Xóa giỏ hàng và Form khỏi Session. [cite: 762]
+        return "redirect:/client/order/complete"; [cite: 738, 762]
+    }
+
+    // Hiển thị màn hình Hoàn tất [cite: 740]
+    @RequestMapping(path = "/client/order/complete", method = RequestMethod.GET)
+    public String completeGet() {
+        return "client/order/complete"; [cite: 742, 762]
+    }
+}
