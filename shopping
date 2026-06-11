@@ -87,3 +87,164 @@ public class ClientOrderRegistController {
         return "client/order/complete"; [cite: 742, 762]
     }
 }
+
+
+
+hoàn chỉnh
+package jp.co.sss.shop.controller.client.order;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import jakarta.servlet.http.HttpSession;
+
+import java.util.List;
+import java.sql.Date;
+
+// Chú ý import các class tương ứng của dự án
+import jp.co.sss.shop.bean.BasketBean;
+import jp.co.sss.shop.bean.UserBean;
+import jp.co.sss.shop.entity.Order;
+import jp.co.sss.shop.entity.OrderItem;
+import jp.co.sss.shop.repository.ItemRepository;
+import jp.co.sss.shop.repository.OrderRepository;
+import jp.co.sss.shop.repository.OrderItemRepository;
+
+@Controller
+public class ClientOrderRegistController {
+
+    @Autowired
+    HttpSession session;
+
+    @Autowired
+    ItemRepository itemRepository;
+
+    @Autowired
+    OrderRepository orderRepository;
+
+    @Autowired
+    OrderItemRepository orderItemRepository;
+
+    // ==========================================
+    // 1. MÀN HÌNH NHẬP ĐỊA CHỈ (ADDRESS)
+    // ==========================================
+    @RequestMapping(path = "/client/order/address/input", method = RequestMethod.POST)
+    public String addressInputPost() {
+        // Kiểm tra giỏ hàng rỗng
+        List<BasketBean> basketList = (List<BasketBean>) session.getAttribute("basketList");
+        if (basketList == null || basketList.isEmpty()) {
+            return "redirect:/client/basket/list";
+        }
+        return "redirect:/client/order/address/input";
+    }
+
+    @RequestMapping(path = "/client/order/address/input", method = RequestMethod.GET)
+    public String addressInputGet() {
+        return "client/order/address_input";
+    }
+
+    // ==========================================
+    // 2. MÀN HÌNH CHỌN THANH TOÁN (PAYMENT)
+    // ==========================================
+    @RequestMapping(path = "/client/order/payment/input", method = RequestMethod.POST)
+    public String paymentInputPost(Integer payMethod) {
+        // Ở đây em có thể lưu payMethod vào một FormBean trong Session
+        session.setAttribute("payMethod", payMethod);
+        return "redirect:/client/order/payment/input";
+    }
+
+    @RequestMapping(path = "/client/order/payment/input", method = RequestMethod.GET)
+    public String paymentInputGet() {
+        return "client/order/payment_input";
+    }
+
+    // ==========================================
+    // 3. MÀN HÌNH XÁC NHẬN (CHECK) - QUAN TRỌNG
+    // ==========================================
+    @RequestMapping(path = "/client/order/check", method = RequestMethod.POST)
+    public String checkPost() {
+        return "redirect:/client/order/check";
+    }
+
+    @RequestMapping(path = "/client/order/check", method = RequestMethod.GET)
+    public String checkGet(Model model) {
+        List<BasketBean> basketList = (List<BasketBean>) session.getAttribute("basketList");
+        
+        // KIỂM TRA TỒN KHO THEO YÊU CẦU THIẾT KẾ 4-9
+        boolean isStockShortage = false;
+        int totalAmount = 0;
+
+        for (BasketBean basket : basketList) {
+            jp.co.sss.shop.entity.Item dbItem = itemRepository.findById(basket.getId()).orElse(null);
+            if (dbItem != null) {
+                if (dbItem.getStock() < basket.getOrderNum()) {
+                    isStockShortage = true; // Phát hiện thiếu hàng
+                    // Tự động ép số lượng đặt mua về bằng với số tồn kho tối đa còn lại
+                    basket.setOrderNum(dbItem.getStock()); 
+                }
+                totalAmount += (dbItem.getPrice() * basket.getOrderNum());
+            }
+        }
+
+        if (isStockShortage) {
+            model.addAttribute("errorMessage", "一部商品の在庫が不足しているため、注文数を調整しました。");
+        }
+
+        model.addAttribute("totalAmount", totalAmount);
+        return "client/order/check";
+    }
+
+    // ==========================================
+    // 4. MÀN HÌNH HOÀN TẤT (COMPLETE)
+    // ==========================================
+    @RequestMapping(path = "/client/order/complete", method = RequestMethod.POST)
+    public String completePost() {
+        UserBean user = (UserBean) session.getAttribute("user");
+        List<BasketBean> basketList = (List<BasketBean>) session.getAttribute("basketList");
+        Integer payMethod = (Integer) session.getAttribute("payMethod");
+
+        if (user == null || basketList == null || basketList.isEmpty()) {
+            return "redirect:/";
+        }
+
+        // BƯỚC 1: Tạo Order (Đơn hàng tổng)
+        Order order = new Order();
+        order.setUserId(user.getId());
+        order.setPayMethod(payMethod);
+        order.setInsertDate(new Date(System.currentTimeMillis()));
+        order = orderRepository.save(order); // Lưu và lấy ID đơn hàng vừa tạo
+
+        // BƯỚC 2: Tạo OrderItems (Chi tiết đơn hàng) & Trừ tồn kho
+        for (BasketBean basket : basketList) {
+            if (basket.getOrderNum() > 0) {
+                // Lưu Order Item
+                OrderItem orderItem = new OrderItem();
+                orderItem.setOrderId(order.getId());
+                orderItem.setItemId(basket.getId());
+                orderItem.setQuantity(basket.getOrderNum());
+                orderItem.setInsertDate(new Date(System.currentTimeMillis()));
+                orderItemRepository.save(orderItem);
+
+                // Trừ tồn kho trong bảng Item
+                jp.co.sss.shop.entity.Item dbItem = itemRepository.findById(basket.getId()).orElse(null);
+                if (dbItem != null) {
+                    dbItem.setStock(dbItem.getStock() - basket.getOrderNum());
+                    itemRepository.save(dbItem);
+                }
+            }
+        }
+
+        // BƯỚC 3: Dọn dẹp Session
+        session.removeAttribute("basketList");
+        session.removeAttribute("payMethod");
+
+        return "redirect:/client/order/complete";
+    }
+
+    @RequestMapping(path = "/client/order/complete", method = RequestMethod.GET)
+    public String completeGet() {
+        return "client/order/complete";
+    }
+}
