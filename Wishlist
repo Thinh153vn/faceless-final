@@ -1,37 +1,84 @@
-package jp.co.sss.shop.entity;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import java.sql.Date;
-
 /**
- * お気に入り情報 エンティティクラス
- */
-@Entity
-@Table(name = "wishlists")
-public class Wishlist {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+	 * お気に入り追加処理
+	 */
+	@RequestMapping(path = "/client/favorite/add", method = RequestMethod.POST)
+	public String addFavorite(@RequestParam(name = "itemId", required = false) Integer itemId, 
+			@RequestParam(name = "id", required = false) Integer id) {
+		
+		UserBean user = (UserBean) session.getAttribute("user");
+		if (user == null) {
+			return "redirect:/login";
+		}
+		
+		// Lấy đúng ID sản phẩm từ View truyền lên
+		Integer targetItemId = (itemId != null) ? itemId : id;
+		if (targetItemId == null) {
+			return "redirect:/client/favorite/list";
+		}
 
-    @Column(name = "user_id")
-    private Integer userId;
+		// SỬA LỖI: Dùng targetItemId thay vì itemId
+		Favorite existFavorite = favoriteRepository.findByUserIdAndItemId(user.getId(), targetItemId);
+		if (existFavorite == null) {
+			Favorite favorite = new Favorite();
+			favorite.setUserId(user.getId());
+			favorite.setItemId(targetItemId); // SỬA LỖI: Dùng targetItemId
+			favorite.setInsertDate(new Date(System.currentTimeMillis()));
+			favoriteRepository.save(favorite);
+		}
 
-    @Column(name = "item_id")
-    private Integer itemId;
+		return "redirect:/client/favorite/list";
+	}
 
-    @Column(name = "insert_date")
-    private Date insertDate;
+import org.springframework.web.bind.annotation.ResponseBody;
 
-    @ManyToOne
-    @JoinColumn(name = "item_id", insertable = false, updatable = false)
-    private Item item;
+// ... (các hàm cũ giữ nguyên)
 
-    // TODO: Dùng Eclipse tạo Getters và Setters ở đây
-}
+	/**
+	 * お気に入り追加・削除の非同期処理 (AJAX Toggle)
+	 */
+	@RequestMapping(path = "/client/favorite/toggleAjax", method = RequestMethod.POST)
+	@ResponseBody // Rất quan trọng: Báo cho Spring Boot trả về chuỗi Text, không chuyển trang HTML
+	public String toggleAjax(@RequestParam("itemId") Integer itemId) {
+		UserBean user = (UserBean) session.getAttribute("user");
+		if (user == null) {
+			return "UNAUTHORIZED"; // Chưa đăng nhập
+		}
+
+		// Kiểm tra trạng thái hiện tại trong DB
+		Favorite existFavorite = favoriteRepository.findByUserIdAndItemId(user.getId(), itemId);
+		
+		if (existFavorite != null) {
+			// Đã có -> Thực hiện XÓA
+			favoriteRepository.delete(existFavorite);
+			return "REMOVED";
+		} else {
+			// Chưa có -> Thực hiện THÊM
+			Favorite favorite = new Favorite();
+			favorite.setUserId(user.getId());
+			favorite.setItemId(itemId);
+			favorite.setInsertDate(new Date(System.currentTimeMillis()));
+			favoriteRepository.save(favorite);
+			return "ADDED";
+		}
+	}
+
+
+showcontroller
+@Autowired
+    FavoriteRepository favoriteRepository;
+
+    // Trong hàm hiển thị danh sách sản phẩm (list) hoặc chi tiết sản phẩm (detail)
+    // Thêm đoạn code này vào trước khi return "..."
+    
+    UserBean user = (UserBean) session.getAttribute("user");
+    List<Integer> favoriteItemIds = new ArrayList<>();
+    
+    if (user != null) {
+        // Lấy danh sách yêu thích của User
+        List<Favorite> favorites = favoriteRepository.findByUserIdOrderByInsertDateDesc(user.getId());
+        for (Favorite f : favorites) {
+            favoriteItemIds.add(f.getItemId()); // Chỉ trích xuất ID sản phẩm
+        }
+    }
+    // Gửi mảng ID này ra view
+    model.addAttribute("favoriteItemIds", favoriteItemIds);
